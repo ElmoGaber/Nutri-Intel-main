@@ -1,0 +1,377 @@
+{
+  "users": [
+    {
+      "id": "user_1776890681606_xwlg6a4rps9",
+      "username": "test",
+      "email": "test@nutri-intel.com",
+      "password": "$2b$10$mugW79MeGAZLRnlpCkfXu.nXBlJk6CtG/q7QWypvqHqoOjXO0rpTC",
+      "firstName": "Test",
+      "lastName": "User",
+      "age": 25,
+      "height": 175,
+      "weight": 70,
+      "bloodType": "O+",
+      "isAdmin": false,
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-22T20:44:41.606Z",
+      "updatedAt": "2026-04-22T20:44:41.606Z"
+    },
+    {
+      "id": "user_1776890682043_phx66n4rs8k",
+      "username": "admin",
+      "email": "admin@nutri-intel.com",
+      "password": "$2b$10$0nJ6jNsv1R0CR6Rin3jAjuL00TcXYn6j8onIR6QYMYnMkjeKCSSQa",
+      "firstName": "Admin",
+      "lastName": "Owner",
+      "age": 30,
+      "height": 180,
+      "weight": 80,
+      "bloodType": "A+",
+      "isAdmin": true,
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-22T20:44:42.043Z",
+      "updatedAt": "2026-04-22T20:44:42.043Z"
+    },
+    {
+      "id": "user_1776961688352_dmkl7ukauot",
+      "username": "doctor",
+      "email": "doctor@nutri-intel.com",
+      "password": "$2b$10$r1xOXnles8BxLt.JQ8mkce/h8eQ6bKEUQntlua3TdVcwaaTTFNo4.",
+      "firstName": "Demo",
+      "lastName": "Doctor",
+      "age": 38,
+      "height": 178,
+      "weight": 82,
+      "bloodType": "A+",
+      "isAdmin": false,
+      "role": "doctor",
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-23T16:28:08.352Z",
+      "updatedAt": "2026-04-23T16:28:08.352Z"
+    },
+    {
+      "id": "user_1776961688484_mn9ergsedr",
+      "username": "coach",
+      "email": "coach@nutri-intel.com",
+      "password": "$2b$10$Q/wj40qShBpmbj7sY8gydOu0fAFzLcQsLZdEctsTUAEdaeiHC99zu",
+      "firstName": "Demo",
+      "lastName": "Coach",
+      "age": 34,
+      "height": 176,
+      "weight": 76,
+      "bloodType": "B+",
+      "isAdmin": false,
+      "role": "coach",
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-23T16:28:08.484Z",
+      "updatedAt": "2026-04-23T16:28:08.484Z"
+    },
+    {
+      "id": "user_1776961688724_18hqhjp8roc",
+      "username": "testuser_reg_unique",
+      "email": "testuser_unique@example.com",
+      "password": "$2b$10$7y6cxYarHEeJdajzm4xTSO3d0Up5ZdNy.IutLEQyOTjlN1406/07u",
+      "firstName": "Test",
+      "lastName": "User",
+      "isAdmin": false,
+      "role": "patient",
+      "clientId": "PT-UNI9MP",
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-23T16:28:08.724Z",
+      "updatedAt": "2026-04-23T16:28:08.724Z"
+    },
+    {
+      "id": "user_1776965121766_4taacnbx0zb",
+      "username": "patient-mobr5iej",
+      "email": "patient-mobr5iej@nutri-intel.local",
+      "password": "$2b$10$mHxyvDAyhAMJznJwuumzPuM1Sc4BajeiWWWRpp9b592ELuWd3oJqu",
+      "isAdmin": false,
+      "role": "patient",
+      "clientId": "PAT-MOBR5IEJ",
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-23T17:25:21.766Z",
+      "updatedAt": "2026-04-23T17:25:21.766Z"
+    },
+    {
+      "id": "user_1776965121966_cevz7rcuzg",
+      "username": "practitioner-mobr5iej",
+      "email": "practitioner-mobr5iej@nutri-intel.local",
+      "password": "$2b$10$ZmATa8a/Jp6/rp6Ab.vNcugkYPp2O92nIHm2BKRDBopEnLVNYmN9u",
+      "firstName": "Regression",
+      "lastName": "Coach",
+      "isAdmin": false,
+      "role": "coach",
+      "onboardingCompleted": false,
+      "createdAt": "2026-04-23T17:25:21.966Z",
+      "updatedAt": "2026-04-23T17:25:21.966Z"
+    }
+  ],
+  "medications": [
+    {
+      "id": "med_1776893255946_imuph8skfol",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "أملوديبين",
+      "dosage": "5mg",
+      "frequency": "once daily",
+      "time": "08:00",
+      "relation": "Before meal",
+      "status": "pending",
+      "warning": "",
+      "startDate": "2026-04-22T21:27:35.940Z",
+      "createdAt": "2026-04-22T21:27:35.946Z",
+      "updatedAt": "2026-04-22T21:27:35.946Z"
+    }
+  ],
+  "meals": [
+    {
+      "id": "meal_1776893168534_pjap0tydr8",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "أرز أبيض مطبوخ",
+      "mealType": "other",
+      "description": null,
+      "calories": 130,
+      "protein": 3,
+      "carbs": 28,
+      "fat": 0,
+      "date": "2026-04-22T10:00:00.000Z",
+      "createdAt": "2026-04-22T21:26:08.534Z",
+      "updatedAt": "2026-04-22T21:26:08.534Z"
+    },
+    {
+      "id": "meal_1776893207171_m87ejsrxoi",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "تونة معلبة بالزيت",
+      "mealType": "other",
+      "description": null,
+      "calories": 198,
+      "protein": 29,
+      "carbs": 0,
+      "fat": 8,
+      "date": "2026-04-22T10:00:00.000Z",
+      "createdAt": "2026-04-22T21:26:47.171Z",
+      "updatedAt": "2026-04-22T21:26:47.171Z"
+    },
+    {
+      "id": "meal_1776893364546_0aaittq0g3wp",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "Greek Yogurt",
+      "mealType": "snacks",
+      "description": "من قاعدة الأغذية: 1 cup",
+      "calories": 237.7,
+      "protein": 22.1,
+      "carbs": 8.8,
+      "fat": 12.3,
+      "date": "2026-04-22T21:29:24.540Z",
+      "createdAt": "2026-04-22T21:29:24.546Z",
+      "updatedAt": "2026-04-22T21:29:24.546Z"
+    },
+    {
+      "id": "meal_1776961689465_psrtufzbtxq",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "Baked Chicken",
+      "mealType": "other",
+      "description": null,
+      "calories": 320,
+      "protein": 40,
+      "carbs": 10,
+      "fat": 15,
+      "date": "2026-04-23T16:28:09.459Z",
+      "createdAt": "2026-04-23T16:28:09.465Z",
+      "updatedAt": "2026-04-23T16:28:09.482Z"
+    }
+  ],
+  "healthMetrics": [
+    {
+      "id": "metric_1776893242232_qq9x5ferf6",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "type": "Blood Glucose",
+      "value": "50",
+      "unit": "mg/dL",
+      "date": "2026-04-22T21:27:22.226Z",
+      "createdAt": "2026-04-22T21:27:22.232Z",
+      "updatedAt": "2026-04-22T21:27:22.232Z"
+    }
+  ],
+  "journalEntries": [
+    {
+      "id": "journal_1776893274248_6kqe9778wjo",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "title": "",
+      "content": "",
+      "mood": "Great",
+      "tags": [],
+      "date": "2026-04-22T21:27:54.235Z",
+      "createdAt": "2026-04-22T21:27:54.248Z",
+      "updatedAt": "2026-04-22T21:27:54.248Z"
+    }
+  ],
+  "chatMessages": [],
+  "dietaryPreferences": [],
+  "uploads": [],
+  "coachingSessions": [
+    {
+      "id": "session_1776893457436_dmnyjrcvk1e",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "title": "الصحة العامة",
+      "notes": "",
+      "status": "pending",
+      "scheduledAt": "2026-04-23T21:30:00.000Z",
+      "createdAt": "2026-04-22T21:30:57.436Z",
+      "updatedAt": "2026-04-22T21:30:57.436Z"
+    },
+    {
+      "id": "session_1776965121788_curhxlvldi",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "coachUserId": "user_1776961688352_dmkl7ukauot",
+      "title": "doctor-linked-session-mobr5iej",
+      "notes": "Doctor session created in regression test",
+      "meetingUrl": "https://meet.google.com/dgg-8kdh-81z",
+      "status": "pending",
+      "createdAt": "2026-04-23T17:25:21.788Z",
+      "updatedAt": "2026-04-23T17:25:21.788Z"
+    },
+    {
+      "id": "session_1776965121798_aiu8f8942u",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "coachUserId": "user_1776961688484_mn9ergsedr",
+      "title": "coach-linked-session-mobr5iej",
+      "notes": "Coach session created in regression test",
+      "meetingUrl": "https://meet.google.com/custom-regression-link",
+      "status": "pending",
+      "createdAt": "2026-04-23T17:25:21.798Z",
+      "updatedAt": "2026-04-23T17:25:21.798Z"
+    },
+    {
+      "id": "session_1776965121807_c53ecc9pots",
+      "userId": "user_1776965121766_4taacnbx0zb",
+      "coachUserId": "user_1776961688352_dmkl7ukauot",
+      "title": "other-patient-doctor-session-mobr5iej",
+      "notes": "Second patient linked to the doctor",
+      "meetingUrl": "https://meet.google.com/rn9-8puf-qs2",
+      "status": "pending",
+      "createdAt": "2026-04-23T17:25:21.807Z",
+      "updatedAt": "2026-04-23T17:25:21.807Z"
+    },
+    {
+      "id": "session_1776965209637_0vb98iapfbqh",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "coachUserId": "user_1776961688352_dmkl7ukauot",
+      "title": "diag-session",
+      "meetingUrl": "https://meet.google.com/kxq-xymk-ic1",
+      "status": "pending",
+      "createdAt": "2026-04-23T17:26:49.638Z",
+      "updatedAt": "2026-04-23T17:26:49.638Z"
+    }
+  ],
+  "waterLogs": [
+    {
+      "id": "water_1776893217727_fhqnz6d8lh4",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 150,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:26:57.727Z"
+    },
+    {
+      "id": "water_1776893219063_aae9yp20dhj",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 250,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:26:59.063Z"
+    },
+    {
+      "id": "water_1776893219729_oybt893n1lm",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 350,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:26:59.729Z"
+    },
+    {
+      "id": "water_1776893220265_2r0eb7pbrto",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 350,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:27:00.265Z"
+    },
+    {
+      "id": "water_1776893223736_iwas1hvt9o",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 250,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:27:03.736Z"
+    },
+    {
+      "id": "water_1776893224137_1e2w4izzm87i",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 350,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:27:04.137Z"
+    },
+    {
+      "id": "water_1776893225105_e4ic34l0ay8",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 150,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:27:05.105Z"
+    },
+    {
+      "id": "water_1776893282222_s2ou1fpkc2i",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "amount": 50,
+      "unit": "ml",
+      "date": "2026-04-22T00:00:00.000Z",
+      "createdAt": "2026-04-22T21:28:02.222Z"
+    }
+  ],
+  "userGoals": [
+    {
+      "id": "goal_1776893511353_p4j5pwqmtmq",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "goalType": "manage_condition",
+      "isActive": true,
+      "createdAt": "2026-04-22T21:31:51.353Z",
+      "updatedAt": "2026-04-22T21:31:51.353Z"
+    },
+    {
+      "id": "goal_1776893569616_j9fww777fdg",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "goalType": "maintain",
+      "targetWeight": 50,
+      "startWeight": 70,
+      "targetDate": "2026-04-14T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2026-04-22T21:32:49.616Z",
+      "updatedAt": "2026-04-22T21:32:49.616Z"
+    }
+  ],
+  "emergencyContacts": [
+    {
+      "id": "ec_1776893490960_diefsdzto5r",
+      "userId": "user_1776890681606_xwlg6a4rps9",
+      "name": "محمد",
+      "phone": "+2010602547787",
+      "countryCode": "+20",
+      "relationship": "خال",
+      "isPrimary": true,
+      "createdAt": "2026-04-22T21:31:30.960Z"
+    }
+  ],
+  "emergencyMedicalInfo": {},
+  "adminMessages": [
+    {
+      "id": "msg_1776893612895_oy1ot50s6t",
+      "toUserId": "user_1776890681606_xwlg6a4rps9",
+      "fromAdminId": "user_1776890682043_phx66n4rs8k",
+      "subject": "hi",
+      "body": "اهلا",
+      "isRead": true,
+      "createdAt": "2026-04-22T21:33:32.895Z"
+    }
+  ]
+}

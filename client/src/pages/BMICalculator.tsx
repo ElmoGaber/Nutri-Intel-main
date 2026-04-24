@@ -37,6 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   NUTRITION_FORMULA_PRESETS,
+  type BmrEquationType,
   type NutritionFormulaKey,
   type NutritionFormulaPreset,
 } from "@shared/personalization-config";
@@ -51,10 +52,10 @@ function calcIBW(heightCm: number, gender: Gender): number {
   return Math.round((base + 2.3 * (heightInches - 60)) * 10) / 10;
 }
 
-// ABW is used when actual weight > 120% of IBW (obesity factor 0.4)
-function calcABW(actualWeight: number, ibw: number): number | null {
+// ABW is used when actual weight > 120% of IBW.
+function calcABW(actualWeight: number, ibw: number, obesityFactor: number): number | null {
   if (actualWeight > ibw * 1.2) {
-    return Math.round((ibw + 0.4 * (actualWeight - ibw)) * 10) / 10;
+    return Math.round((ibw + obesityFactor * (actualWeight - ibw)) * 10) / 10;
   }
   return null;
 }
@@ -169,6 +170,7 @@ interface FormulaAssignmentResponse {
     formulas?: {
       activeFormulaKey?: NutritionFormulaKey;
       enabledFormulaKeys?: NutritionFormulaKey[];
+      showEquationSteps?: boolean;
     };
   };
 }
@@ -203,8 +205,10 @@ interface BMIResult {
   ffmiEstimate: number;
   formulaKey: NutritionFormulaKey;
   formulaLabel: string;
-  formulaBmrEquation: "mifflinStJeor" | "katchMcArdle";
+  formulaBmrEquation: BmrEquationType;
   formulaUsesAbw: boolean;
+  formulaAbwFactor: number;
+  formulaKcalPerKg: number | null;
 }
 
 function calculateBMI(
@@ -216,6 +220,9 @@ function calculateBMI(
   formulaPreset: NutritionFormulaPreset,
 ): BMIResult {
   const preset = formulaPreset || NUTRITION_FORMULA_PRESETS.mifflin_abw;
+  const abwFactor = Number.isFinite(preset.adjustedBodyWeightFactor)
+    ? preset.adjustedBodyWeightFactor
+    : 0.4;
   const heightM = heightCm / 100;
   const bmi = weight / (heightM * heightM);
   const roundedBMI = Math.round(bmi * 10) / 10;
@@ -282,7 +289,7 @@ function calculateBMI(
 
   // IBW / ABW — determines correct weight for energy equations
   const ibw = calcIBW(heightCm, gender);
-  const abw = calcABW(weight, ibw);
+  const abw = calcABW(weight, ibw, abwFactor);
   const shouldUseAbw = preset.useAdjustedBodyWeight && abw !== null;
   // Obese cases can use ABW based on the selected formula preset.
   const weightUsedForCalories = shouldUseAbw ? abw : weight;
@@ -295,13 +302,25 @@ function calculateBMI(
   const fatMassEstimate = Math.round((weightUsedForCalories - lbmEstimate) * 10) / 10;
   const ffmiEstimate = calcFFMI(lbmEstimate, heightCm / 100);
 
-  const bmrKcal = preset.bmrEquation === "katchMcArdle"
-    ? calcKatchBMR(lbmEstimate)
-    : (gender === "male"
+  let bmrKcal = 0;
+  let activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel];
+  let tdeeKcal = 0;
+
+  if (preset.bmrEquation === "katchMcArdle") {
+    bmrKcal = calcKatchBMR(lbmEstimate);
+    tdeeKcal = Math.round(bmrKcal * activityMultiplier);
+  } else if (preset.bmrEquation === "abwTer30") {
+    const kcalPerKg = Number.isFinite(preset.kcalPerKgForTdee) ? Number(preset.kcalPerKgForTdee) : 30;
+    tdeeKcal = Math.round(weightUsedForCalories * kcalPerKg);
+    bmrKcal = tdeeKcal;
+    activityMultiplier = 1;
+  } else {
+    bmrKcal = gender === "male"
       ? Math.round(10 * weightUsedForCalories + 6.25 * heightCm - 5 * age + 5)
-      : Math.round(10 * weightUsedForCalories + 6.25 * heightCm - 5 * age - 161));
-  const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel];
-  const tdeeKcal = Math.round(bmrKcal * activityMultiplier);
+      : Math.round(10 * weightUsedForCalories + 6.25 * heightCm - 5 * age - 161);
+    tdeeKcal = Math.round(bmrKcal * activityMultiplier);
+  }
+
   const goalCalories = {
     lose: Math.max(1200, Math.round(tdeeKcal + preset.calorieDelta.lose)),
     maintain: Math.max(1200, Math.round(tdeeKcal + preset.calorieDelta.maintain)),
@@ -339,6 +358,10 @@ function calculateBMI(
     formulaLabel: preset.labelEn,
     formulaBmrEquation: preset.bmrEquation,
     formulaUsesAbw: preset.useAdjustedBodyWeight,
+    formulaAbwFactor: abwFactor,
+    formulaKcalPerKg: preset.bmrEquation === "abwTer30"
+      ? (Number.isFinite(preset.kcalPerKgForTdee) ? Number(preset.kcalPerKgForTdee) : 30)
+      : null,
   };
 }
 
@@ -386,6 +409,7 @@ export default function BMICalculator() {
     (key): key is NutritionFormulaKey => Boolean(NUTRITION_FORMULA_PRESETS[key]),
   );
   const assignedFormulaKey = formulaAssignment?.settings?.formulas?.activeFormulaKey;
+  const showEquationSteps = formulaAssignment?.settings?.formulas?.showEquationSteps ?? true;
   const selectedFormulaKey: NutritionFormulaKey = assignedFormulaKey && enabledFormulaKeys.includes(assignedFormulaKey)
     ? assignedFormulaKey
     : (enabledFormulaKeys[0] || fallbackFormulaKey);
@@ -919,7 +943,7 @@ export default function BMICalculator() {
         const weightNum = parseFloat(weight);
         const hasInputs = !isNaN(heightNum) && !isNaN(weightNum) && heightNum > 0 && weightNum > 0 && heightNum >= 100;
         const ibw = hasInputs ? calcIBW(heightNum, gender) : null;
-        const abw = ibw !== null ? calcABW(weightNum, ibw) : null;
+        const abw = ibw !== null ? calcABW(weightNum, ibw, activeFormulaPreset.adjustedBodyWeightFactor) : null;
         const pct = ibw !== null ? pctOfIBW(weightNum, ibw) : null;
         const abwEligible = abw !== null;
         const useABW = activeFormulaPreset.useAdjustedBodyWeight && abwEligible;
@@ -1081,7 +1105,7 @@ export default function BMICalculator() {
                         <div className="text-xs text-muted-foreground space-y-1 border-t border-border pt-3">
                           <p className="font-medium text-foreground">{language === "ar" ? "المعادلة:" : "Formula:"}</p>
                           <p className="font-mono bg-muted/50 px-2 py-1 rounded text-[11px]">
-                            {ibw} + 0.4 × ({weightNum} − {ibw}) = {abw} kg
+                            {ibw} + {activeFormulaPreset.adjustedBodyWeightFactor.toFixed(2)} × ({weightNum} − {ibw}) = {abw} kg
                           </p>
                         </div>
                       </>
@@ -1167,8 +1191,8 @@ export default function BMICalculator() {
                     <p>
                       <span className="font-medium text-foreground">ABW:</span>{" "}
                       {language === "ar"
-                        ? `يُستخدم عند الوزن > 120% من IBW وحسب المعادلة النشطة (${activeFormulaPreset.labelAr})`
-                        : `Applied when actual > 120% IBW and enabled by the active formula (${activeFormulaPreset.labelEn})`}
+                        ? `يُستخدم عند الوزن > 120% من IBW بمعامل ${activeFormulaPreset.adjustedBodyWeightFactor.toFixed(2)} حسب المعادلة النشطة (${activeFormulaPreset.labelAr})`
+                        : `Applied when actual > 120% IBW using factor ${activeFormulaPreset.adjustedBodyWeightFactor.toFixed(2)} from active formula (${activeFormulaPreset.labelEn})`}
                     </p>
                     <p>
                       <span className="font-medium text-foreground">{language === "ar" ? "البروتين:" : "Protein:"}</span>{" "}
@@ -1810,6 +1834,7 @@ export default function BMICalculator() {
             </motion.div>
 
             {/* Step-by-step equation cards + progress indicators */}
+            {showEquationSteps && (
             <motion.div variants={itemVariants} className="glass-card p-6 space-y-5">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <ChevronRight className="w-4 h-4 text-primary" />
@@ -1835,12 +1860,18 @@ export default function BMICalculator() {
 
                 <div className="rounded-xl border border-border p-4 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    {language === "ar"
-                      ? `2) BMR (${result.formulaBmrEquation === "katchMcArdle" ? "Katch-McArdle" : "Mifflin-St Jeor"})`
-                      : `2) BMR (${result.formulaBmrEquation === "katchMcArdle" ? "Katch-McArdle" : "Mifflin-St Jeor"})`}
+                    {result.formulaBmrEquation === "abwTer30"
+                      ? (language === "ar"
+                        ? `2) ABW (معامل ${result.formulaAbwFactor.toFixed(2)})`
+                        : `2) ABW (factor ${result.formulaAbwFactor.toFixed(2)})`)
+                      : (language === "ar"
+                        ? `2) BMR (${result.formulaBmrEquation === "katchMcArdle" ? "Katch-McArdle" : "Mifflin-St Jeor"})`
+                        : `2) BMR (${result.formulaBmrEquation === "katchMcArdle" ? "Katch-McArdle" : "Mifflin-St Jeor"})`)}
                   </p>
                   <p className="font-mono text-sm bg-muted/40 rounded-lg px-3 py-2">
-                    {result.formulaBmrEquation === "katchMcArdle"
+                    {result.formulaBmrEquation === "abwTer30"
+                      ? `${result.ibw} + (${parseFloat(weight)} - ${result.ibw}) x ${result.formulaAbwFactor.toFixed(2)} = ${result.weightUsedForCalories}`
+                      : result.formulaBmrEquation === "katchMcArdle"
                       ? `370 + (21.6 x ${result.lbmEstimate}) = ${result.bmrKcal}`
                       : (gender === "male"
                         ? `10 x ${result.bmrFormulaWeight} + 6.25 x ${parseFloat(height)} - 5 x ${parseInt(age)} + 5 = ${result.bmrKcal}`
@@ -1849,9 +1880,17 @@ export default function BMICalculator() {
                 </div>
 
                 <div className="rounded-xl border border-border p-4 space-y-2">
-                  <p className="text-xs text-muted-foreground">{language === "ar" ? "3) TDEE" : "3) TDEE"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {result.formulaBmrEquation === "abwTer30"
+                      ? (language === "ar"
+                        ? `3) السعرات الكلية (ABW x ${result.formulaKcalPerKg ?? 30})`
+                        : `3) Total Calories (ABW x ${result.formulaKcalPerKg ?? 30})`)
+                      : (language === "ar" ? "3) TDEE" : "3) TDEE")}
+                  </p>
                   <p className="font-mono text-sm bg-muted/40 rounded-lg px-3 py-2">
-                    {result.bmrKcal} x {result.activityMultiplier} = {result.tdeeKcal} kcal
+                    {result.formulaBmrEquation === "abwTer30"
+                      ? `${result.weightUsedForCalories} x ${(result.formulaKcalPerKg ?? 30)} = ${result.tdeeKcal} kcal`
+                      : `${result.bmrKcal} x ${result.activityMultiplier} = ${result.tdeeKcal} kcal`}
                   </p>
                 </div>
 
@@ -1911,6 +1950,7 @@ export default function BMICalculator() {
                 </div>
               </div>
             </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

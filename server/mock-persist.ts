@@ -4,6 +4,10 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
+import {
+  createDefaultSystemControlConfig,
+  type SystemControlConfig,
+} from "../shared/system-control-config";
 
 const DATA_DIR = join(process.cwd(), "server", "data");
 const DB_FILE = join(join(DATA_DIR, "mock-store.json"));
@@ -122,8 +126,8 @@ export type MockClientPersonalization = {
     emergencyAdviceAr: string;
   };
   formulas: {
-    enabledFormulaKeys: Array<"mifflin_abw" | "katch_lbm" | "clinical_conservative">;
-    activeFormulaKey: "mifflin_abw" | "katch_lbm" | "clinical_conservative";
+    enabledFormulaKeys: Array<"mifflin_abw" | "katch_lbm" | "clinical_conservative" | "abw_ter_30">;
+    activeFormulaKey: "mifflin_abw" | "katch_lbm" | "clinical_conservative" | "abw_ter_30";
     showEquationSteps: boolean;
   };
 };
@@ -146,6 +150,7 @@ type StoreData = {
   emergencyMedicalInfo: Record<string, Record<string, string>>;
   adminMessages: MockAdminMessage[];
   clientPersonalizations: MockClientPersonalization[];
+  systemControlConfig: SystemControlConfig;
 };
 
 const EMPTY: StoreData = {
@@ -154,6 +159,7 @@ const EMPTY: StoreData = {
   uploads: [], coachingSessions: [], waterLogs: [], userGoals: [],
   emergencyContacts: [], emergencyMedicalInfo: {}, adminMessages: [],
   clientPersonalizations: [],
+  systemControlConfig: createDefaultSystemControlConfig(),
 };
 
 // ── Maps (runtime) ────────────────────────────────────────────────────────────
@@ -173,6 +179,11 @@ export const mockEmergencyContacts= new Map<string, MockEmergencyContact>();
 export const mockEmergencyMedInfo = new Map<string, Record<string, string>>();
 export const mockAdminMessages    = new Map<string, MockAdminMessage>();
 export const mockClientPersonalizations = new Map<string, MockClientPersonalization>();
+export let mockSystemControlConfig: SystemControlConfig = createDefaultSystemControlConfig();
+
+export function setMockSystemControlConfig(config: SystemControlConfig) {
+  mockSystemControlConfig = config;
+}
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 
@@ -204,6 +215,7 @@ export function loadStore() {
   Object.entries(data.emergencyMedicalInfo).forEach(([k, v]) => mockEmergencyMedInfo.set(k, v));
   (data.adminMessages || []).forEach((m) => mockAdminMessages.set(m.id, m));
   (data.clientPersonalizations || []).forEach((settings) => mockClientPersonalizations.set(settings.userId, settings));
+  mockSystemControlConfig = data.systemControlConfig || createDefaultSystemControlConfig();
 
   console.log(`[mock-db] Loaded: ${mockUsers.size} users, ${mockMeals.size} meals, ${mockHealthMetrics.size} metrics`);
 }
@@ -229,6 +241,7 @@ export function saveStore() {
       emergencyMedicalInfo: Object.fromEntries(mockEmergencyMedInfo.entries()),
       adminMessages:        Array.from(mockAdminMessages.values()),
       clientPersonalizations: Array.from(mockClientPersonalizations.values()),
+      systemControlConfig: mockSystemControlConfig,
     };
     writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
   } catch (e) {

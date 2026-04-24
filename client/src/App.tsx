@@ -148,6 +148,15 @@ function AdminClientCustomizationRoute() {
   return <Suspense fallback={<PageLoader />}><AdminClientCustomization /></Suspense>;
 }
 
+function PractitionerClientCustomizationRoute() {
+  const { isAuthenticated, isAdmin, role, isLoading } = useAuth();
+  if (isLoading) return <PageLoader />;
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  if (isAdmin) return <Redirect to="/admin/customization" />;
+  if (role !== "doctor" && role !== "coach") return <Redirect to="/" />;
+  return <Suspense fallback={<PageLoader />}><AdminClientCustomization /></Suspense>;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -162,6 +171,7 @@ function Router() {
 
         {/* Admin Route */}
         <Route path="/admin/customization" component={AdminClientCustomizationRoute} />
+        <Route path="/doctor/customization" component={PractitionerClientCustomizationRoute} />
         <Route path="/admin/practitioners" component={AdminPractitionersRoute} />
         <Route path="/admin" component={AdminRoute} />
 

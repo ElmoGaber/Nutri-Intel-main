@@ -64,6 +64,8 @@ import {
   mockEmergencyMedInfo,
   mockAdminMessages,
   mockClientPersonalizations,
+  mockSystemControlConfig,
+  setMockSystemControlConfig,
   type MockMedication,
   type MockMeal,
   type MockHealthMetric,
@@ -93,6 +95,12 @@ import {
   type ClientPersonalizationSettings,
   type NutritionFormulaKey,
 } from "../shared/personalization-config";
+import {
+  createDefaultSystemControlConfig,
+  mergeSystemControlConfig,
+  type SystemControlConfig,
+  type SystemRoleKey,
+} from "../shared/system-control-config";
 
 // Type assertion helper for session
 const sessionUserId = (req: Request): string | undefined => {
@@ -158,6 +166,34 @@ const mockEmergencyMedicalInfo = mockEmergencyMedInfo;
 const mockDietaryPreferences = mockDietaryPrefs;
 
 const runtimeClientPersonalizations = new Map<string, ClientPersonalizationSettings>();
+let runtimeSystemControlConfig: SystemControlConfig = createDefaultSystemControlConfig();
+
+function getSystemControlConfig(): SystemControlConfig {
+  return isMockMode ? mockSystemControlConfig : runtimeSystemControlConfig;
+}
+
+function saveSystemControlConfig(config: SystemControlConfig): SystemControlConfig {
+  if (isMockMode) {
+    setMockSystemControlConfig(config);
+    saveStore();
+    return config;
+  }
+  runtimeSystemControlConfig = config;
+  return runtimeSystemControlConfig;
+}
+
+function normalizeSystemRole(role: UserRole): SystemRoleKey {
+  if (role === "admin" || role === "doctor" || role === "coach" || role === "patient") {
+    return role;
+  }
+  return "patient";
+}
+
+function hasRoleCapability(role: UserRole, capability: keyof SystemControlConfig["roleCapabilities"]["admin"]): boolean {
+  const config = getSystemControlConfig();
+  const normalized = normalizeSystemRole(role);
+  return Boolean(config.roleCapabilities?.[normalized]?.[capability]);
+}
 
 function normalizeListInput(value: unknown): string[] {
   if (typeof value === "string") {
@@ -168,7 +204,7 @@ function normalizeListInput(value: unknown): string[] {
 
 function normalizeFormulaKey(value: unknown): NutritionFormulaKey | null {
   if (typeof value !== "string") return null;
-  if (value === "mifflin_abw" || value === "katch_lbm" || value === "clinical_conservative") {
+  if (value === "mifflin_abw" || value === "katch_lbm" || value === "clinical_conservative" || value === "abw_ter_30") {
     return value;
   }
   return null;
@@ -2377,6 +2413,9 @@ Guidelines:
       if (requesterRole !== "admin" && requesterRole !== "doctor" && requesterRole !== "coach") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      if (!hasRoleCapability(requesterRole, "canSearchAnyPatientById")) {
+        return res.status(403).json({ message: "Patient search is disabled for this role" });
+      }
 
       const lookup = String(getRouteParam(req, "patientId") || "").trim().toLowerCase();
       if (!lookup) return res.status(400).json({ message: "patientId is required" });
@@ -2391,15 +2430,6 @@ Guidelines:
       if (!patient) return res.status(404).json({ message: "Patient not found" });
       if (getUserRole(patient) !== "patient") {
         return res.status(400).json({ message: "Target user is not a patient" });
-      }
-
-      if (requesterRole !== "admin") {
-        const hasLinkedSession = Array.from(mockCoachingSessions.values()).some(
-          (s) => s.userId === patient.id && s.coachUserId === requesterId
-        );
-        if (!hasLinkedSession) {
-          return res.status(403).json({ message: "Not assigned to this patient" });
-        }
       }
 
       const patientMetrics = Array.from(mockHealthMetrics.values())
@@ -2646,6 +2676,22 @@ Guidelines:
     next();
   };
 
+  const requireFormulaManager = async (req: Request, res: Response, next: Function) => {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await findUserById(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = getUserRole(user);
+    const canCustomize = hasRoleCapability(role, "canCustomizePatientFormulas");
+    if (!canCustomize) {
+      return res.status(403).json({ message: "Formula customization is disabled for this role" });
+    }
+
+    next();
+  };
+
   const resolveUserByClientIdentifier = async (identifierRaw: string) => {
     const identifier = identifierRaw.trim().toLowerCase();
     if (!identifier) return null;
@@ -2661,6 +2707,45 @@ Guidelines:
 
   app.get("/api/admin/formulas/catalog", requireAdmin, async (_req: Request, res: Response) => {
     res.json(Object.values(NUTRITION_FORMULA_PRESETS));
+  });
+
+  app.get("/api/system-control/current", async (req: Request, res: Response) => {
+    const userId = sessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const role = getUserRole(user);
+    const config = getSystemControlConfig();
+    const roleKey = normalizeSystemRole(role);
+
+    res.json({
+      role,
+      roleCapabilities: config.roleCapabilities[roleKey],
+      branding: config.branding,
+      uiLabels: config.uiLabels,
+    });
+  });
+
+  app.get("/api/admin/system-control", requireAdmin, async (_req: Request, res: Response) => {
+    res.json(getSystemControlConfig());
+  });
+
+  app.put("/api/admin/system-control", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const current = getSystemControlConfig();
+      const merged = mergeSystemControlConfig(current, req.body || {});
+      const saved = saveSystemControlConfig(merged);
+      res.json(saved);
+    } catch (error) {
+      console.error("Admin update system control error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.get("/api/admin/client-customization/:clientId", requireAdmin, async (req: Request, res: Response) => {
@@ -2710,6 +2795,61 @@ Guidelines:
       res.json(response);
     } catch (error) {
       console.error("Admin update client customization error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/practitioner/formulas/catalog", requireFormulaManager, async (_req: Request, res: Response) => {
+    res.json(Object.values(NUTRITION_FORMULA_PRESETS));
+  });
+
+  app.get("/api/practitioner/client-customization/:clientId", requireFormulaManager, async (req: Request, res: Response) => {
+    try {
+      const clientId = getRouteParam(req, "clientId");
+      if (!clientId) {
+        return res.status(400).json({ message: "clientId is required" });
+      }
+
+      const user = await resolveUserByClientIdentifier(clientId);
+      if (!user) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const role = getUserRole(user);
+      if (role !== "patient") {
+        return res.status(400).json({ message: "Target account is not a patient" });
+      }
+
+      const response = await buildMergedPersonalizationResponse(user);
+      res.json(response);
+    } catch (error) {
+      console.error("Practitioner get client customization error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/practitioner/client-customization/:clientId", requireFormulaManager, async (req: Request, res: Response) => {
+    try {
+      const clientId = getRouteParam(req, "clientId");
+      if (!clientId) {
+        return res.status(400).json({ message: "clientId is required" });
+      }
+
+      const user = await resolveUserByClientIdentifier(clientId);
+      if (!user) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const role = getUserRole(user);
+      if (role !== "patient") {
+        return res.status(400).json({ message: "Target account is not a patient" });
+      }
+
+      const payload = (req.body || {}) as Record<string, any>;
+      const response = await applyAdminCustomizationUpdate(user, payload);
+      res.json(response);
+    } catch (error) {
+      console.error("Practitioner update client customization error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

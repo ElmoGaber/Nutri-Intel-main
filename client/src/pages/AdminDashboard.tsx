@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
@@ -9,11 +9,12 @@ import {
   Pill, Phone, BarChart3, Eye, LogOut, Crown, Send,
   Bell, X, CheckCheck, Inbox, Droplets, BookOpen,
   Target, Heart, Calendar, Clock, Info, Coffee, Stethoscope,
-  Dumbbell, Salad, Scale, SlidersHorizontal,
+  Dumbbell, Salad, Scale, SlidersHorizontal, Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
+import type { SystemControlConfig } from "@shared/system-control-config";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type AdminStats = {
@@ -40,6 +41,16 @@ type UserDetail = AdminUser & {
 type AdminMessage = {
   id: string; toUserId: string; fromAdminId: string;
   subject: string; body: string; isRead: boolean; createdAt: string;
+};
+
+type RoleCapabilityDraft = {
+  canSearchAnyPatientById: boolean;
+  canCustomizePatientFormulas: boolean;
+  canAccessRoleDashboard: boolean;
+};
+
+type SystemControlDraft = Omit<SystemControlConfig, "customSettings"> & {
+  customSettingsText: string;
 };
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -546,9 +557,10 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [msgTarget, setMsgTarget] = useState<AdminUser | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "messages">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "messages" | "system">("users");
   const [sortBy, setSortBy] = useState<"createdAt" | "mealsCount" | "metricsCount">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [systemDraft, setSystemDraft] = useState<SystemControlDraft | null>(null);
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery<AdminStats>({
     queryKey: ["admin-stats"],
@@ -579,6 +591,76 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const r = await fetch("/api/admin/messages", { credentials: "include" });
       return r.ok ? r.json() : [];
+    },
+  });
+
+  const { data: systemControl, isLoading: systemLoading, refetch: refetchSystem } = useQuery<SystemControlConfig>({
+    queryKey: ["admin-system-control"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/system-control", { credentials: "include" });
+      if (!r.ok) throw new Error("Forbidden");
+      return r.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!systemControl) return;
+    const customSettingsText = JSON.stringify(systemControl.customSettings || {}, null, 2);
+    setSystemDraft({
+      ...systemControl,
+      customSettingsText,
+    });
+  }, [systemControl]);
+
+  const saveSystemMutation = useMutation({
+    mutationFn: async () => {
+      if (!systemDraft) {
+        throw new Error("No system draft to save");
+      }
+      let parsedCustomSettings: Record<string, unknown> = {};
+      try {
+        parsedCustomSettings = JSON.parse(systemDraft.customSettingsText || "{}");
+      } catch {
+        throw new Error(language === "ar" ? "صيغة JSON غير صحيحة في الإعدادات المخصصة" : "Invalid custom settings JSON");
+      }
+
+      const payload: SystemControlConfig = {
+        updatedAt: systemDraft.updatedAt,
+        branding: systemDraft.branding,
+        uiLabels: systemDraft.uiLabels,
+        roleCapabilities: systemDraft.roleCapabilities,
+        customSettings: parsedCustomSettings,
+      };
+
+      const response = await fetch("/api/admin/system-control", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to update system control");
+      }
+
+      return response.json() as Promise<SystemControlConfig>;
+    },
+    onSuccess: (saved) => {
+      const customSettingsText = JSON.stringify(saved.customSettings || {}, null, 2);
+      setSystemDraft({ ...saved, customSettingsText });
+      qc.setQueryData(["admin-system-control"], saved);
+      toast({
+        title: language === "ar" ? "تم حفظ إعدادات النظام" : "System settings saved",
+        description: language === "ar" ? "تم تحديث الصلاحيات والأسماء والواجهة بنجاح" : "Permissions, labels, and UI settings were updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: language === "ar" ? "فشل تحديث النظام" : "System update failed",
+        description: error instanceof Error ? error.message : (language === "ar" ? "حدث خطأ غير متوقع" : "Unexpected error"),
+      });
     },
   });
 
@@ -618,6 +700,46 @@ export default function AdminDashboard() {
 
   const selectedUser = selectedUserId ? allUsers.find((u) => u.id === selectedUserId) || null : null;
 
+  const setBrandingField = (field: keyof SystemControlConfig["branding"], value: string) => {
+    if (!systemDraft) return;
+    setSystemDraft({
+      ...systemDraft,
+      branding: {
+        ...systemDraft.branding,
+        [field]: value,
+      },
+    });
+  };
+
+  const setUiLabelField = (field: keyof SystemControlConfig["uiLabels"], value: string) => {
+    if (!systemDraft) return;
+    setSystemDraft({
+      ...systemDraft,
+      uiLabels: {
+        ...systemDraft.uiLabels,
+        [field]: value,
+      },
+    });
+  };
+
+  const setRoleCapabilityField = (
+    role: keyof SystemControlConfig["roleCapabilities"],
+    field: keyof RoleCapabilityDraft,
+    value: boolean,
+  ) => {
+    if (!systemDraft) return;
+    setSystemDraft({
+      ...systemDraft,
+      roleCapabilities: {
+        ...systemDraft.roleCapabilities,
+        [role]: {
+          ...systemDraft.roleCapabilities[role],
+          [field]: value,
+        },
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Bar */}
@@ -627,8 +749,12 @@ export default function AdminDashboard() {
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-none">{language === "ar" ? "لوحة تحكم المشرف" : "Admin Dashboard"}</h1>
-            <p className="text-xs text-muted-foreground">Nutri-Intel</p>
+            <h1 className="font-bold text-lg leading-none">
+              {language === "ar"
+                ? (systemDraft?.uiLabels.adminHeaderAr || "لوحة تحكم المشرف")
+                : (systemDraft?.uiLabels.adminHeaderEn || "Admin Dashboard")}
+            </h1>
+            <p className="text-xs text-muted-foreground">{systemDraft?.branding.appNameEn || "Nutri-Intel"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -675,6 +801,7 @@ export default function AdminDashboard() {
           {([
             { key: "users", label: language === "ar" ? `العملاء (${usersList.length})` : `Clients (${usersList.length})`, icon: Users },
             { key: "messages", label: language === "ar" ? `الرسائل (${sentMessages.length})` : `Messages (${sentMessages.length})`, icon: Send },
+            { key: "system", label: language === "ar" ? "تحكم السيستم" : "System Control", icon: Settings2 },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -794,6 +921,107 @@ export default function AdminDashboard() {
               </h2>
             </div>
             <SentMessagesPanel users={usersList} language={language} />
+          </div>
+        )}
+
+        {activeTab === "system" && (
+          <div className="space-y-4">
+            <div className="glass-card p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Settings2 className="w-5 h-5 text-primary" />
+                  {language === "ar" ? "مركز تحكم السيستم" : "System Control Center"}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {language === "ar"
+                    ? "تحكم في أسماء النظام وصلاحيات كل دور (أدمن/دكتور/كوتش/مريض) وإعدادات مخصصة عامة."
+                    : "Manage labels, role capabilities (admin/doctor/coach/patient), and global custom settings."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => refetchSystem()}>
+                  <RefreshCw className="w-4 h-4 me-1.5" />
+                  {language === "ar" ? "تحديث" : "Refresh"}
+                </Button>
+                <Button size="sm" onClick={() => saveSystemMutation.mutate()} disabled={!systemDraft || saveSystemMutation.isPending}>
+                  {saveSystemMutation.isPending ? <RefreshCw className="w-4 h-4 me-1.5 animate-spin" /> : <SlidersHorizontal className="w-4 h-4 me-1.5" />}
+                  {language === "ar" ? "حفظ الإعدادات" : "Save Settings"}
+                </Button>
+              </div>
+            </div>
+
+            {systemLoading || !systemDraft ? (
+              <div className="glass-card p-8 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="glass-card p-4 space-y-3">
+                    <h3 className="font-semibold">{language === "ar" ? "الهوية والأسماء" : "Branding and Names"}</h3>
+                    <Input value={systemDraft.branding.appNameEn} onChange={(e) => setBrandingField("appNameEn", e.target.value)} placeholder="App Name (EN)" />
+                    <Input value={systemDraft.branding.appNameAr} onChange={(e) => setBrandingField("appNameAr", e.target.value)} placeholder="اسم التطبيق (AR)" />
+                    <Input value={systemDraft.branding.doctorLabelEn} onChange={(e) => setBrandingField("doctorLabelEn", e.target.value)} placeholder="Doctor Label (EN)" />
+                    <Input value={systemDraft.branding.doctorLabelAr} onChange={(e) => setBrandingField("doctorLabelAr", e.target.value)} placeholder="اسم الطبيب (AR)" />
+                    <Input value={systemDraft.branding.coachLabelEn} onChange={(e) => setBrandingField("coachLabelEn", e.target.value)} placeholder="Coach Label (EN)" />
+                    <Input value={systemDraft.branding.coachLabelAr} onChange={(e) => setBrandingField("coachLabelAr", e.target.value)} placeholder="اسم الكوتش (AR)" />
+                    <Input value={systemDraft.branding.patientLabelEn} onChange={(e) => setBrandingField("patientLabelEn", e.target.value)} placeholder="Patient Label (EN)" />
+                    <Input value={systemDraft.branding.patientLabelAr} onChange={(e) => setBrandingField("patientLabelAr", e.target.value)} placeholder="اسم المريض (AR)" />
+                  </div>
+
+                  <div className="glass-card p-4 space-y-3">
+                    <h3 className="font-semibold">{language === "ar" ? "عناوين الواجهات" : "Interface Labels"}</h3>
+                    <Input value={systemDraft.uiLabels.adminHeaderEn} onChange={(e) => setUiLabelField("adminHeaderEn", e.target.value)} placeholder="Admin Header (EN)" />
+                    <Input value={systemDraft.uiLabels.adminHeaderAr} onChange={(e) => setUiLabelField("adminHeaderAr", e.target.value)} placeholder="عنوان الأدمن (AR)" />
+                    <Input value={systemDraft.uiLabels.practitionerHeaderEn} onChange={(e) => setUiLabelField("practitionerHeaderEn", e.target.value)} placeholder="Practitioner Header (EN)" />
+                    <Input value={systemDraft.uiLabels.practitionerHeaderAr} onChange={(e) => setUiLabelField("practitionerHeaderAr", e.target.value)} placeholder="عنوان الطبيب/الكوتش (AR)" />
+                  </div>
+                </div>
+
+                <div className="glass-card p-4 space-y-3">
+                  <h3 className="font-semibold">{language === "ar" ? "صلاحيات الأنظمة الثلاثة" : "Role Capabilities"}</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground">
+                          <th className="text-start py-2">{language === "ar" ? "الدور" : "Role"}</th>
+                          <th className="text-center py-2">{language === "ar" ? "بحث بأي Patient ID" : "Search any patient"}</th>
+                          <th className="text-center py-2">{language === "ar" ? "تخصيص المعادلات للمريض" : "Customize patient formulas"}</th>
+                          <th className="text-center py-2">{language === "ar" ? "الوصول للداشبورد" : "Dashboard access"}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(Object.keys(systemDraft.roleCapabilities) as Array<keyof SystemControlConfig["roleCapabilities"]>).map((roleKey) => {
+                          const row = systemDraft.roleCapabilities[roleKey];
+                          return (
+                            <tr key={roleKey} className="border-b border-border/50 last:border-0">
+                              <td className="py-2 font-medium">{roleKey}</td>
+                              <td className="py-2 text-center">
+                                <input type="checkbox" title="Toggle patient search permission" checked={Boolean(row.canSearchAnyPatientById)} onChange={(e) => setRoleCapabilityField(roleKey, "canSearchAnyPatientById", e.target.checked)} />
+                              </td>
+                              <td className="py-2 text-center">
+                                <input type="checkbox" title="Toggle formula customization permission" checked={Boolean(row.canCustomizePatientFormulas)} onChange={(e) => setRoleCapabilityField(roleKey, "canCustomizePatientFormulas", e.target.checked)} />
+                              </td>
+                              <td className="py-2 text-center">
+                                <input type="checkbox" title="Toggle dashboard access" checked={Boolean(row.canAccessRoleDashboard)} onChange={(e) => setRoleCapabilityField(roleKey, "canAccessRoleDashboard", e.target.checked)} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="glass-card p-4 space-y-2">
+                  <h3 className="font-semibold">{language === "ar" ? "إعدادات مخصصة (JSON)" : "Custom Settings (JSON)"}</h3>
+                  <textarea
+                    className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono"
+                    value={systemDraft.customSettingsText}
+                    onChange={(e) => setSystemDraft({ ...systemDraft, customSettingsText: e.target.value })}
+                    placeholder={language === "ar" ? "أدخل JSON صالح" : "Enter valid JSON"}
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

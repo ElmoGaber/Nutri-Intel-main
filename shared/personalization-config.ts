@@ -1,6 +1,6 @@
-export type NutritionFormulaKey = "mifflin_abw" | "katch_lbm" | "clinical_conservative";
+export type NutritionFormulaKey = "mifflin_abw" | "katch_lbm" | "clinical_conservative" | "abw_ter_30";
 
-export type BmrEquationType = "mifflinStJeor" | "katchMcArdle";
+export type BmrEquationType = "mifflinStJeor" | "katchMcArdle" | "abwTer30";
 
 export interface NutritionFormulaPreset {
   key: NutritionFormulaKey;
@@ -10,6 +10,8 @@ export interface NutritionFormulaPreset {
   descriptionAr: string;
   bmrEquation: BmrEquationType;
   useAdjustedBodyWeight: boolean;
+  adjustedBodyWeightFactor: number;
+  kcalPerKgForTdee?: number;
   calorieDelta: {
     lose: number;
     maintain: number;
@@ -65,6 +67,7 @@ export const NUTRITION_FORMULA_PRESETS: Record<NutritionFormulaKey, NutritionFor
     descriptionAr: "يستخدم Mifflin-St Jeor مع ABW عند تجاوز الوزن 120% من IBW.",
     bmrEquation: "mifflinStJeor",
     useAdjustedBodyWeight: true,
+    adjustedBodyWeightFactor: 0.4,
     calorieDelta: { lose: -500, maintain: 0, gain: 300 },
     proteinPerKg: { lose: 2.2, maintain: 1.6, gain: 1.8 },
     fatPerKg: { lose: 0.9, maintain: 0.9, gain: 1.0 },
@@ -75,10 +78,11 @@ export const NUTRITION_FORMULA_PRESETS: Record<NutritionFormulaKey, NutritionFor
     key: "katch_lbm",
     labelEn: "Katch-McArdle (LBM Focus)",
     labelAr: "Katch-McArdle (تركيز الكتلة الخالية)",
-    descriptionEn: "Uses LBM-based BMR for clients with body-composition tracking.",
-    descriptionAr: "يعتمد على LBM لحساب BMR للعملاء الذين يتابعون تركيب الجسم.",
+    descriptionEn: "BMR = 370 + (21.6 x LBM), ideal for clients with body-composition tracking.",
+    descriptionAr: "معادلة BMR = 370 + (21.6 x LBM)، مناسبة لمن يتابع تركيب الجسم.",
     bmrEquation: "katchMcArdle",
     useAdjustedBodyWeight: false,
+    adjustedBodyWeightFactor: 0.4,
     calorieDelta: { lose: -450, maintain: 0, gain: 320 },
     proteinPerKg: { lose: 2.3, maintain: 1.8, gain: 2.0 },
     fatPerKg: { lose: 0.8, maintain: 0.9, gain: 1.0 },
@@ -93,11 +97,28 @@ export const NUTRITION_FORMULA_PRESETS: Record<NutritionFormulaKey, NutritionFor
     descriptionAr: "فروق سعرات محافظة مع أهداف ماكرو معتدلة للحالات الحساسة.",
     bmrEquation: "mifflinStJeor",
     useAdjustedBodyWeight: true,
+    adjustedBodyWeightFactor: 0.4,
     calorieDelta: { lose: -300, maintain: 0, gain: 180 },
     proteinPerKg: { lose: 1.8, maintain: 1.5, gain: 1.7 },
     fatPerKg: { lose: 0.8, maintain: 0.85, gain: 0.9 },
     noteEn: "Fits chronic-condition workflows where aggressive changes are not preferred.",
     noteAr: "مناسب للحالات المزمنة التي تحتاج تغييرات تدريجية غير حادة.",
+  },
+  abw_ter_30: {
+    key: "abw_ter_30",
+    labelEn: "ABW TER x30 (Clinical)",
+    labelAr: "ABW TER x30 (سريري)",
+    descriptionEn: "Adjusted BW = ideal + (actual - ideal) x 0.38, then total calories = ABW x 30.",
+    descriptionAr: "الوزن المعدل = المثالي + (الفعلي - المثالي) x 0.38، ثم إجمالي السعرات = ABW x 30.",
+    bmrEquation: "abwTer30",
+    useAdjustedBodyWeight: true,
+    adjustedBodyWeightFactor: 0.38,
+    kcalPerKgForTdee: 30,
+    calorieDelta: { lose: -300, maintain: 0, gain: 200 },
+    proteinPerKg: { lose: 1.8, maintain: 1.5, gain: 1.7 },
+    fatPerKg: { lose: 0.8, maintain: 0.85, gain: 0.9 },
+    noteEn: "Uses the clinical total-energy shortcut shown in your protocol image.",
+    noteAr: "يعتمد على معادلة السعرات السريرية المختصرة الموجودة في الصورة.",
   },
 };
 

@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserRound, HeartPulse, Pill, CalendarClock, Activity, Loader2, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
+import { Search, UserRound, HeartPulse, Pill, CalendarClock, Activity, Loader2, AlertTriangle, SlidersHorizontal } from "lucide-react";
 
 type PatientOverview = {
   id: string;
@@ -34,9 +35,27 @@ type PatientOverview = {
   } | null;
 };
 
+type SystemControlCurrent = {
+  role: "admin" | "doctor" | "coach" | "patient";
+  roleCapabilities: {
+    canSearchAnyPatientById: boolean;
+    canCustomizePatientFormulas: boolean;
+    canAccessRoleDashboard: boolean;
+  };
+  branding: {
+    appNameEn: string;
+    appNameAr: string;
+  };
+  uiLabels: {
+    practitionerHeaderEn: string;
+    practitionerHeaderAr: string;
+  };
+};
+
 export default function DoctorDashboard() {
   const { language } = useLanguage();
   const { role } = useAuth();
+  const [, setLocation] = useLocation();
   const [patientId, setPatientId] = useState("");
   const [result, setResult] = useState<PatientOverview | null>(null);
   const [searchError, setSearchError] = useState("");
@@ -48,6 +67,18 @@ export default function DoctorDashboard() {
       if (!response.ok) return [];
       return response.json();
     },
+  });
+
+  const { data: systemControl } = useQuery<SystemControlCurrent>({
+    queryKey: ["system-control-current"],
+    queryFn: async () => {
+      const response = await fetch("/api/system-control/current", { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Failed to load system control");
+      }
+      return response.json();
+    },
+    retry: 0,
   });
 
   const searchPatient = useMutation({
@@ -74,13 +105,18 @@ export default function DoctorDashboard() {
   });
 
   const isPractitioner = role === "doctor" || role === "coach";
+  const canAccessRoleDashboard = systemControl?.roleCapabilities?.canAccessRoleDashboard ?? isPractitioner;
+  const canSearchAnyPatient = systemControl?.roleCapabilities?.canSearchAnyPatientById ?? isPractitioner;
+  const canCustomizePatientFormulas = systemControl?.roleCapabilities?.canCustomizePatientFormulas ?? isPractitioner;
   const upcomingSessions = sessions.filter((s: any) => s.status !== "completed");
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-1 mb-6">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gradient">
-          {language === "ar" ? "لوحة الطبيب/الكوتش" : "Practitioner Dashboard"}
+          {language === "ar"
+            ? (systemControl?.uiLabels?.practitionerHeaderAr || "لوحة الطبيب/الكوتش")
+            : (systemControl?.uiLabels?.practitionerHeaderEn || "Practitioner Dashboard")}
         </h1>
         <p className="text-muted-foreground">
           {language === "ar"
@@ -100,11 +136,35 @@ export default function DoctorDashboard() {
         </div>
       )}
 
+      {isPractitioner && !canAccessRoleDashboard && (
+        <div className="glass-card p-5 border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {language === "ar"
+              ? "تم إيقاف الوصول للوحة الطبيب/الكوتش لهذا الدور من إعدادات السيستم."
+              : "Practitioner dashboard access is disabled for this role by system control settings."}
+          </p>
+        </div>
+      )}
+
       <div className="glass-card p-5 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Search className="w-4 h-4 text-primary" />
-          {language === "ar" ? "بحث بالمريض عبر Patient ID" : "Patient Search by Patient ID"}
-        </h2>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            {language === "ar" ? "بحث بالمريض عبر Patient ID" : "Patient Search by Patient ID"}
+          </h2>
+          {isPractitioner && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setLocation("/doctor/customization")}
+              disabled={!canCustomizePatientFormulas || !canAccessRoleDashboard}
+            >
+              <SlidersHorizontal className="w-4 h-4 me-1.5" />
+              {language === "ar" ? "تخصيص معادلات العميل" : "Client Formula Control"}
+            </Button>
+          )}
+        </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
             value={patientId}
@@ -113,13 +173,27 @@ export default function DoctorDashboard() {
           />
           <Button
             onClick={() => searchPatient.mutate(patientId.trim())}
-            disabled={!patientId.trim() || searchPatient.isPending}
+            disabled={!patientId.trim() || searchPatient.isPending || !canSearchAnyPatient || !canAccessRoleDashboard}
             className="sm:w-44"
           >
             {searchPatient.isPending ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Search className="w-4 h-4 me-2" />}
             {language === "ar" ? "بحث" : "Search"}
           </Button>
         </div>
+        {!canSearchAnyPatient && (
+          <p className="text-sm text-amber-500">
+            {language === "ar"
+              ? "ميزة البحث عن أي مريض معطلة لهذا الدور من إعدادات الأدمن."
+              : "Patient lookup is disabled for this role by admin system control."}
+          </p>
+        )}
+        {!canCustomizePatientFormulas && (
+          <p className="text-sm text-amber-500">
+            {language === "ar"
+              ? "ميزة تخصيص المعادلات للمريض معطلة لهذا الدور من إعدادات الأدمن."
+              : "Client formula customization is disabled for this role by admin system control."}
+          </p>
+        )}
         {searchError && <p className="text-sm text-red-500">{searchError}</p>}
       </div>
 

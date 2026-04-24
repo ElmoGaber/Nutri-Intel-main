@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,19 +75,43 @@ function listToCsv(list: string[] | undefined): string {
   return (list || []).join(", ");
 }
 
+function getFormulaEquationPreview(preset: NutritionFormulaPreset, language: "ar" | "en") {
+  if (preset.bmrEquation === "katchMcArdle") {
+    return language === "ar"
+      ? "BMR = 370 + (21.6 x LBM)"
+      : "BMR = 370 + (21.6 x LBM)";
+  }
+
+  if (preset.bmrEquation === "abwTer30") {
+    const factor = Number.isFinite(preset.adjustedBodyWeightFactor) ? preset.adjustedBodyWeightFactor : 0.38;
+    const kcalPerKg = Number.isFinite(preset.kcalPerKgForTdee) ? preset.kcalPerKgForTdee : 30;
+    return language === "ar"
+      ? `ABW = IBW + (Actual - IBW) x ${factor.toFixed(2)} | Calories = ABW x ${kcalPerKg}`
+      : `ABW = IBW + (Actual - IBW) x ${factor.toFixed(2)} | Calories = ABW x ${kcalPerKg}`;
+  }
+
+  return language === "ar"
+    ? "BMR (Mifflin-St Jeor) = 10 x W + 6.25 x H - 5 x Age +/- ثابت الجنس"
+    : "BMR (Mifflin-St Jeor) = 10 x W + 6.25 x H - 5 x Age +/- sex constant";
+}
+
 export default function AdminClientCustomization() {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { role, isAdmin } = useAuth();
   const [lookupId, setLookupId] = useState("");
   const [activeLookupId, setActiveLookupId] = useState("");
   const [showFormulas, setShowFormulas] = useState(false);
   const [draft, setDraft] = useState<AdminClientCustomizationResponse | null>(null);
+  const isPractitioner = role === "doctor" || role === "coach";
+  const baseEndpoint = isAdmin ? "/api/admin" : "/api/practitioner";
+  const queryScope = isAdmin ? "admin" : "practitioner";
 
   const { data, isLoading, isError, refetch } = useQuery<AdminClientCustomizationResponse>({
-    queryKey: ["admin-client-customization", activeLookupId],
-    enabled: Boolean(activeLookupId),
+    queryKey: [queryScope, "client-customization", activeLookupId],
+    enabled: Boolean(activeLookupId) && (isAdmin || isPractitioner),
     queryFn: async () => {
-      const response = await fetch(`/api/admin/client-customization/${encodeURIComponent(activeLookupId)}`, {
+      const response = await fetch(`${baseEndpoint}/client-customization/${encodeURIComponent(activeLookupId)}`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -106,7 +131,7 @@ export default function AdminClientCustomization() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!activeLookupId || !draft) return null;
-      const response = await fetch(`/api/admin/client-customization/${encodeURIComponent(activeLookupId)}`, {
+      const response = await fetch(`${baseEndpoint}/client-customization/${encodeURIComponent(activeLookupId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -224,7 +249,9 @@ export default function AdminClientCustomization() {
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gradient">
-          {language === "ar" ? "تخصيص العميل من الأدمن" : "Admin Client Customization"}
+          {isAdmin
+            ? (language === "ar" ? "تخصيص العميل من الأدمن" : "Admin Client Customization")
+            : (language === "ar" ? "تخصيص العميل للطبيب/الكوتش" : "Practitioner Client Customization")}
         </h1>
         <p className="text-muted-foreground mt-2">
           {language === "ar"
@@ -232,6 +259,14 @@ export default function AdminClientCustomization() {
             : "Search by Client ID or User ID, then update allergies, diet, conditions, favorites, and formulas with automatic client-side sync."}
         </p>
       </div>
+
+      {!isAdmin && !isPractitioner && (
+        <div className="glass-card p-4 border border-red-500/30 bg-red-500/10 text-sm text-red-500">
+          {language === "ar"
+            ? "هذه الصفحة متاحة فقط للأدمن أو الطبيب أو الكوتش."
+            : "This page is only available to admin, doctor, or coach accounts."}
+        </div>
+      )}
 
       <div className="glass-card p-5 space-y-4">
         <div className="flex items-center gap-2">
@@ -446,6 +481,9 @@ export default function AdminClientCustomization() {
                             <p className="text-xs text-muted-foreground mt-1">
                               {language === "ar" ? preset.descriptionAr : preset.descriptionEn}
                             </p>
+                            <p className="text-xs text-primary/85 mt-2 font-mono">
+                              {getFormulaEquationPreview(preset, language === "ar" ? "ar" : "en")}
+                            </p>
                           </div>
                           <input
                             type="checkbox"
@@ -462,6 +500,7 @@ export default function AdminClientCustomization() {
                           <input
                             type="radio"
                             name="active-formula"
+                            title={language === "ar" ? "تعيين المعادلة الفعالة" : "Set active formula"}
                             checked={active}
                             onChange={() => setActiveFormula(preset.key)}
                           />
@@ -485,6 +524,7 @@ export default function AdminClientCustomization() {
                   </span>
                   <input
                     type="checkbox"
+                    title={language === "ar" ? "إظهار المعادلات خطوة بخطوة" : "Show equations step by step"}
                     checked={Boolean(draft.settings.formulas.showEquationSteps)}
                     onChange={(e) => setDraft({
                       ...draft,

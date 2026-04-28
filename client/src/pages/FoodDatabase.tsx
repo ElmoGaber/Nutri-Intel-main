@@ -448,16 +448,51 @@ function NutrientBar({ label, value, max, unit, color }: { label: string; value:
   );
 }
 
+function deriveFallbackIngredients(food: FoodItem, language: string): string[] {
+  const tags = food.tags || [];
+  if (language === "ar") {
+    const base = ["مكون بروتيني مناسب", "خضار طازجة", "مصدر كربوهيدرات معقد", "دهون صحية خفيفة", "توابل طبيعية"];
+    if (tags.some((tag) => tag.toLowerCase().includes("fiber"))) base.push("مكون عالي بالألياف");
+    if (tags.some((tag) => tag.toLowerCase().includes("omega"))) base.push("مصدر أوميجا 3");
+    return base;
+  }
+
+  const base = ["Lean protein source", "Fresh vegetables", "Complex carbohydrate", "Light healthy fat", "Natural spices"];
+  if (tags.some((tag) => tag.toLowerCase().includes("fiber"))) base.push("High-fiber ingredient");
+  if (tags.some((tag) => tag.toLowerCase().includes("omega"))) base.push("Omega-3 source");
+  return base;
+}
+
+function deriveFallbackHealthySteps(language: string): string[] {
+  if (language === "ar") {
+    return [
+      "استخدم الشوي أو الخبز أو الطهي بالبخار بدل القلي العميق.",
+      "قلل الملح واستبدله بالأعشاب والليمون والتوابل.",
+      "استخدم كمية قليلة من الزيت الصحي (مثل زيت الزيتون).",
+      "قدّم حصة معتدلة وأضف سلطة أو خضار جانبية.",
+    ];
+  }
+
+  return [
+    "Prefer baking, grilling, or steaming over deep frying.",
+    "Reduce salt and boost flavor with herbs, lemon, and spices.",
+    "Use a small amount of healthy oil (such as olive oil).",
+    "Keep portions moderate and add a side salad or vegetables.",
+  ];
+}
+
 function FoodDetailPanel({
   food,
   onClose,
   fit,
+  betterAlternative,
   t,
   language,
 }: {
   food: FoodItem;
   onClose: () => void;
   fit: FoodFit;
+  betterAlternative?: { name: string; nameAr: string; score: number } | null;
   t: (key: any) => string;
   language: string;
 }) {
@@ -509,6 +544,14 @@ function FoodDetailPanel({
   const displayName = language === "ar" ? food.nameAr : food.name;
   const warningList = language === "ar" ? fit.warningsAr : fit.warningsEn;
   const actionList = language === "ar" ? fit.actionsAr : fit.actionsEn;
+  const prepMinutes = food.prepMinutes ?? (food.readyMeal ? 18 : 12);
+  const healthRating = food.healthScore5 ?? Math.max(1, Math.min(5, Math.round(fit.score / 20)));
+  const ingredients = language === "ar"
+    ? (food.recipeIngredientsAr?.length ? food.recipeIngredientsAr : deriveFallbackIngredients(food, language))
+    : (food.recipeIngredientsEn?.length ? food.recipeIngredientsEn : deriveFallbackIngredients(food, language));
+  const healthySteps = language === "ar"
+    ? (food.healthyStepsAr?.length ? food.healthyStepsAr : deriveFallbackHealthySteps(language))
+    : (food.healthyStepsEn?.length ? food.healthyStepsEn : deriveFallbackHealthySteps(language));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -516,7 +559,11 @@ function FoodDetailPanel({
         className="glass-card w-full max-w-3xl max-h-[90vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="absolute top-4 end-4 z-10 rounded-full bg-background/80 p-2 hover:bg-muted transition-colors">
+        <button
+          onClick={onClose}
+          title={language === "ar" ? "إغلاق التفاصيل" : "Close details"}
+          className="absolute top-4 end-4 z-10 rounded-full bg-background/80 p-2 hover:bg-muted transition-colors"
+        >
           <X className="w-5 h-5" />
         </button>
 
@@ -550,6 +597,51 @@ function FoodDetailPanel({
             </div>
             <p className={`text-sm mt-2 ${fitTone.text}`}>{language === "ar" ? fit.summaryAr : fit.summaryEn}</p>
           </div>
+
+          {food.readyMeal && (
+            <div className="rounded-2xl border border-border bg-background/70 p-4 mb-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4 text-primary" />
+                  {language === "ar" ? "تفاصيل إعداد الوجبة" : "Meal preparation details"}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    {language === "ar" ? `${prepMinutes} دقيقة` : `${prepMinutes} min`}
+                  </span>
+                  <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
+                    {language === "ar" ? `تقييم صحي ${healthRating}/5` : `Health rating ${healthRating}/5`}
+                  </span>
+                </div>
+              </div>
+
+              {betterAlternative && betterAlternative.score > fit.score && (
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-200">
+                  {language === "ar"
+                    ? `يوجد خيار أفضل صحيًا حاليا: ${betterAlternative.nameAr || betterAlternative.name} (درجة ملاءمة ${betterAlternative.score}%).`
+                    : `There is a healthier current alternative: ${betterAlternative.name} (fit ${betterAlternative.score}%).`}
+                </div>
+              )}
+
+              <div>
+                <p className="text-sm font-semibold mb-2">{language === "ar" ? "المكونات" : "Ingredients"}</p>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {ingredients.map((ingredient) => (
+                    <li key={ingredient}>• {ingredient}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold mb-2">{language === "ar" ? "تعليمات صحية للتحضير" : "Healthy preparation steps"}</p>
+                <ol className="space-y-1 text-sm text-muted-foreground list-decimal ps-4">
+                  {healthySteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
 
           {warningList.length > 0 && (
             <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 mb-4">
@@ -588,6 +680,7 @@ function FoodDetailPanel({
               <select
                 value={selectedUnit}
                 onChange={(e) => setSelectedUnit(e.target.value)}
+                title={language === "ar" ? "اختيار وحدة الحصة" : "Select serving unit"}
                 className="w-full rounded-xl border border-input bg-background/80 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
               >
                 {food.servingUnits.map((u) => (
@@ -612,6 +705,7 @@ function FoodDetailPanel({
               <select
                 value={selectedMealType}
                 onChange={(e) => setSelectedMealType(e.target.value as MealTypeOption)}
+                title={language === "ar" ? "اختيار نوع الوجبة" : "Select meal type"}
                 className="w-full rounded-xl border border-input bg-background/80 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
               >
                 {["breakfast", "lunch", "dinner", "snacks"].map((type) => (
@@ -949,6 +1043,16 @@ export default function FoodDatabase() {
     return found?.fit || buildFoodFit(selectedFood, personalSignals, personalizationProfile);
   }, [selectedFood, foodsWithFit, personalSignals, personalizationProfile]);
 
+  const selectedBetterAlternative = useMemo(() => {
+    if (!selectedFood || !selectedFoodFit) return null;
+    const better = rankedFoods.find(({ food, fit }) => (
+      food.readyMeal
+      && food.name !== selectedFood.name
+      && fit.score > selectedFoodFit.score + 4
+    ));
+    return better ? { name: better.food.name, nameAr: better.food.nameAr, score: better.fit.score } : null;
+  }, [selectedFood, selectedFoodFit, rankedFoods]);
+
   const contextSummary = useMemo(() => {
     const goalText = goalLabel(personalSignals.primaryGoal, language);
     const glucoseText = personalSignals.avgGlucose != null
@@ -1065,6 +1169,7 @@ export default function FoodDatabase() {
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
+              title={language === "ar" ? "مسح البحث" : "Clear search"}
               className="absolute end-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-muted"
             >
               <X className="w-4 h-4" />
@@ -1203,6 +1308,7 @@ export default function FoodDatabase() {
           food={selectedFood}
           onClose={() => setSelectedFood(null)}
           fit={selectedFoodFit}
+          betterAlternative={selectedBetterAlternative}
           t={t}
           language={language}
         />

@@ -45,6 +45,12 @@ export interface FoodItem {
   childFriendly?: boolean;
   healthyForKids?: boolean;
   mealTypes?: string[];
+  prepMinutes?: number;
+  healthScore5?: number;
+  recipeIngredientsEn?: string[];
+  recipeIngredientsAr?: string[];
+  healthyStepsEn?: string[];
+  healthyStepsAr?: string[];
   conditionGuidance?: FoodConditionGuidance[];
 }
 
@@ -4855,6 +4861,186 @@ const conditionAliases: Record<string, string[]> = {
 };
 
 const foodMetadataByName: Record<string, Partial<FoodItem>> = {
+  "Overnight Oats Jar": {
+    prepMinutes: 10,
+    healthScore5: 5,
+    recipeIngredientsEn: ["Rolled oats", "Low-fat milk or unsweetened yogurt", "Chia seeds", "Berries", "Cinnamon"],
+    recipeIngredientsAr: ["شوفان كامل", "لبن قليل الدسم أو زبادي بدون سكر", "بذور شيا", "توت", "قرفة"],
+    healthyStepsEn: [
+      "Mix oats, milk/yogurt, and chia in a jar.",
+      "Refrigerate overnight (6-8 hours).",
+      "Add berries and cinnamon before serving.",
+      "Avoid added sugar; use fruit sweetness only.",
+    ],
+    healthyStepsAr: [
+      "اخلط الشوفان مع اللبن/الزبادي وبذور الشيا في برطمان.",
+      "اتركه في الثلاجة طوال الليل (6-8 ساعات).",
+      "أضف التوت والقرفة قبل التقديم.",
+      "تجنب السكر المضاف واكتفِ بحلاوة الفاكهة.",
+    ],
+  },
+  "Chicken Rice Bowl": {
+    prepMinutes: 25,
+    healthScore5: 4,
+    recipeIngredientsEn: ["Skinless chicken breast", "Cooked brown rice", "Mixed vegetables", "Olive oil", "Lemon + herbs"],
+    recipeIngredientsAr: ["صدر دجاج بدون جلد", "أرز بني مطبوخ", "خضار مشكلة", "زيت زيتون", "ليمون وأعشاب"],
+    healthyStepsEn: [
+      "Grill chicken with herbs and lemon instead of heavy sauces.",
+      "Steam or saute vegetables with minimal oil.",
+      "Serve with a moderate rice portion and extra veggies.",
+      "Limit salt; use lemon, garlic, and spices for flavor.",
+    ],
+    healthyStepsAr: [
+      "اشوِ الدجاج بالأعشاب والليمون بدل الصوصات الدسمة.",
+      "اطهُ الخضار بالبخار أو بتشويح خفيف بزيت قليل.",
+      "قدم كمية معتدلة من الأرز مع زيادة الخضار.",
+      "قلل الملح واستخدم الليمون والثوم والتوابل للنكهة.",
+    ],
+  },
+  "Salmon Quinoa Bowl": {
+    prepMinutes: 22,
+    healthScore5: 5,
+    recipeIngredientsEn: ["Salmon fillet", "Cooked quinoa", "Leafy greens", "Cherry tomatoes", "Lemon + olive oil"],
+    recipeIngredientsAr: ["فيليه سلمون", "كينوا مطبوخة", "خضار ورقية", "طماطم شيري", "ليمون وزيت زيتون"],
+    healthyStepsEn: [
+      "Bake or grill salmon at medium heat until just cooked.",
+      "Cook quinoa in water without butter.",
+      "Assemble with greens and tomatoes.",
+      "Use a light lemon-olive oil dressing.",
+    ],
+    healthyStepsAr: [
+      "اشوِ أو اخبز السلمون على حرارة متوسطة حتى تمام النضج.",
+      "اطبخ الكينوا بالماء بدون زبدة.",
+      "جهز الطبق مع الخضار الورقية والطماطم.",
+      "استخدم تتبيلة خفيفة من الليمون وزيت الزيتون.",
+    ],
+  },
+  "Turkey Avocado Sandwich": {
+    prepMinutes: 12,
+    healthScore5: 4,
+    recipeIngredientsEn: ["Whole-grain bread", "Sliced turkey", "Avocado", "Lettuce + cucumber", "Mustard"],
+    recipeIngredientsAr: ["خبز حبوب كاملة", "شرائح تركي", "أفوكادو", "خس وخيار", "مستردة"],
+    healthyStepsEn: [
+      "Use whole-grain bread and lean turkey slices.",
+      "Spread mashed avocado instead of mayonnaise.",
+      "Add fresh vegetables for fiber.",
+      "Keep sauces minimal and low-sodium.",
+    ],
+    healthyStepsAr: [
+      "استخدم خبز حبوب كاملة وشرائح تركي قليلة الدهن.",
+      "ادهن أفوكادو مهروس بدل المايونيز.",
+      "أضف خضار طازجة لزيادة الألياف.",
+      "اجعل الصوص قليل وبصوديوم منخفض.",
+    ],
+  },
+  "Greek Yogurt Berry Cup": {
+    prepMinutes: 6,
+    healthScore5: 5,
+    recipeIngredientsEn: ["Plain Greek yogurt", "Mixed berries", "Chopped nuts", "Cinnamon"],
+    recipeIngredientsAr: ["زبادي يوناني سادة", "توت مشكل", "مكسرات مفرومة", "قرفة"],
+    healthyStepsEn: [
+      "Use plain unsweetened yogurt.",
+      "Top with fresh berries.",
+      "Add a small amount of nuts for healthy fats.",
+      "Skip added sugar and flavored syrups.",
+    ],
+    healthyStepsAr: [
+      "استخدم زبادي سادة بدون سكر.",
+      "أضف التوت الطازج فوقه.",
+      "أضف كمية صغيرة من المكسرات للدهون الصحية.",
+      "تجنب السكر المضاف والشراب المحلى.",
+    ],
+  },
+  "Hummus Veggie Snack Box": {
+    prepMinutes: 8,
+    healthScore5: 5,
+    recipeIngredientsEn: ["Hummus", "Carrot sticks", "Cucumber sticks", "Bell pepper", "Olive oil + lemon"],
+    recipeIngredientsAr: ["حمص", "أصابع جزر", "أصابع خيار", "فلفل ألوان", "زيت زيتون وليمون"],
+    healthyStepsEn: [
+      "Prepare hummus with little oil and no extra salt.",
+      "Cut vegetables into snack-size sticks.",
+      "Pack balanced portions for easy grab-and-go.",
+      "Prefer baked whole-grain crackers if needed.",
+    ],
+    healthyStepsAr: [
+      "جهز الحمص بزيت قليل وبدون ملح إضافي.",
+      "قطّع الخضار على شكل أصابع مناسبة للسناك.",
+      "قسم الكميات بشكل متوازن لسهولة التناول.",
+      "لو احتجت مقرمشات استخدم حبوب كاملة مخبوزة.",
+    ],
+  },
+  "Lentil Power Soup": {
+    prepMinutes: 30,
+    healthScore5: 5,
+    recipeIngredientsEn: ["Red lentils", "Onion + garlic", "Carrot", "Cumin", "Low-sodium broth"],
+    recipeIngredientsAr: ["عدس أحمر", "بصل وثوم", "جزر", "كمون", "مرق قليل الصوديوم"],
+    healthyStepsEn: [
+      "Saute onion and garlic in a teaspoon of olive oil.",
+      "Add lentils, carrot, cumin, and low-sodium broth.",
+      "Cook until lentils soften, then blend lightly.",
+      "Serve with lemon and avoid adding extra salt.",
+    ],
+    healthyStepsAr: [
+      "شوّح البصل والثوم بملعقة صغيرة زيت زيتون.",
+      "أضف العدس والجزر والكمون ومرق قليل الصوديوم.",
+      "اتركه حتى ينضج العدس ثم اخلطه خلطا خفيفا.",
+      "قدّمه مع ليمون وتجنب الملح الزائد.",
+    ],
+  },
+  "Mini Chicken Pasta": {
+    prepMinutes: 20,
+    healthScore5: 4,
+    recipeIngredientsEn: ["Whole-wheat pasta", "Diced chicken", "Tomato sauce", "Peas", "Olive oil"],
+    recipeIngredientsAr: ["باستا قمح كامل", "دجاج مكعبات", "صلصة طماطم", "بازلاء", "زيت زيتون"],
+    healthyStepsEn: [
+      "Cook whole-wheat pasta al dente.",
+      "Saute chicken cubes with minimal oil.",
+      "Add tomato sauce and peas, then combine with pasta.",
+      "Keep the portion moderate and pair with salad.",
+    ],
+    healthyStepsAr: [
+      "اطبخ باستا القمح الكامل حتى النضج المناسب.",
+      "شوّح مكعبات الدجاج بزيت قليل.",
+      "أضف صلصة الطماطم والبازلاء ثم اخلط مع الباستا.",
+      "اجعل الحصة معتدلة وقدّم معها سلطة.",
+    ],
+  },
+  "Banana Oat Pancakes": {
+    prepMinutes: 15,
+    healthScore5: 4,
+    recipeIngredientsEn: ["Oats", "Banana", "Egg", "Milk", "Cinnamon"],
+    recipeIngredientsAr: ["شوفان", "موز", "بيض", "لبن", "قرفة"],
+    healthyStepsEn: [
+      "Blend oats, banana, egg, and milk into batter.",
+      "Cook on a non-stick pan with very little oil.",
+      "Top with fruit instead of syrup.",
+      "Control portion size for better calorie balance.",
+    ],
+    healthyStepsAr: [
+      "اخلط الشوفان والموز والبيض واللبن حتى يصبح الخليط ناعما.",
+      "اطهه على مقلاة غير لاصقة بزيت قليل جدا.",
+      "أضف فاكهة فوقه بدل الشراب السكري.",
+      "اضبط حجم الحصة للحفاظ على توازن السعرات.",
+    ],
+  },
+  "Baked Fish Fingers & Veggies": {
+    prepMinutes: 24,
+    healthScore5: 5,
+    recipeIngredientsEn: ["White fish fillet", "Whole-wheat crumbs", "Egg", "Mixed vegetables", "Paprika"],
+    recipeIngredientsAr: ["فيليه سمك أبيض", "بقسماط قمح كامل", "بيض", "خضار مشكلة", "بابريكا"],
+    healthyStepsEn: [
+      "Coat fish strips lightly with egg and whole-wheat crumbs.",
+      "Bake in oven instead of deep frying.",
+      "Roast vegetables with a small amount of olive oil.",
+      "Serve with yogurt-lemon dip instead of heavy sauces.",
+    ],
+    healthyStepsAr: [
+      "غطِّ شرائح السمك بطبقة خفيفة من البيض والبقسماط الكامل.",
+      "اخبزها في الفرن بدل القلي الغزير.",
+      "اشوِ الخضار مع كمية قليلة من زيت الزيتون.",
+      "قدّمها مع صوص زبادي-ليمون بدل الصوصات الثقيلة.",
+    ],
+  },
   "Apple": {
     childFriendly: true,
     healthyForKids: true,

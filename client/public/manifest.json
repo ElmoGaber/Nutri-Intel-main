@@ -1,0 +1,28 @@
+{
+  "name": "Nutri-Intel - AI Nutrition Intelligence",
+  "short_name": "Nutri-Intel",
+  "description": "AI-powered nutrition and health management platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "food", "medical"],
+  "lang": "en",
+  "dir": "auto"
+}
